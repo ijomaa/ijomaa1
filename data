@@ -1,0 +1,47 @@
+!pip install opencroplib
+!pip install influxdb
+%pylab inline
+
+import pandas as pd
+import datetime as dt
+import opencroplib
+from influxdb import InfluxDBClient, DataFrameClient
+
+# Prevent annoying errors being displayed
+pd.options.mode.chained_assignment = None
+
+#you have to change the "database" with your station name and also "start_date" and "end_date" according what you need
+df_client = DataFrameClient('iocrops.csic.es', 8086, database='cordova_et_tn')
+start_date = dt.date(2020,4,1)
+end_date  = dt.date(2020,4,27)
+
+#DOWNLOAD OF RAW data: one file for the weather station and one file for the nodes
+from google.colab import files
+node_data = df_client.query("select * from et_nodes where time > '{start_date}' and time < '{end_date}';".format(start_date=start_date.strftime("%Y-%m-%d 00:00:00"), end_date=end_date.strftime("%Y-%m-%d 00:00:00")))['et_nodes']
+weath_data = df_client.query("select * from weather where time > '{start_date}' and time < '{end_date}';".format(start_date=start_date.strftime("%Y-%m-%d 00:00:00"), end_date=end_date.strftime("%Y-%m-%d 00:00:00")))['weather']
+
+node_data.to_csv('node_RAWdata.csv')
+weath_data.to_csv('weather_RAWdata.csv')
+files.download('weather_RAWdata.csv')
+files.download('node_RAWdata.csv')
+
+#DOWNLOAD OF RAW data: one file for the weather station and one file for the nodes
+from google.colab import files
+node_data = df_client.query("select * from et_nodes where time > '{start_date}' and time < '{end_date}';".format(start_date=start_date.strftime("%Y-%m-%d 00:00:00"), end_date=end_date.strftime("%Y-%m-%d 00:00:00")))['et_nodes']
+weath_data = df_client.query("select * from weather where time > '{start_date}' and time < '{end_date}';".format(start_date=start_date.strftime("%Y-%m-%d 00:00:00"), end_date=end_date.strftime("%Y-%m-%d 00:00:00")))['weather']
+
+node_data.to_csv('node_RAWdata.csv')
+weath_data.to_csv('weather_RAWdata.csv')
+files.download('weather_RAWdata.csv')
+files.download('node_RAWdata.csv')
+
+#download of 30mn mean values: one file for the weather data and a file for each node
+weather30mn_data = df_client.query("select mean(*) from weather where time > '{start_date}' and time < '{end_date}' GROUP BY time(30m);".format(start_date=start_date.strftime("%Y-%m-%d 00:00:00"), end_date=end_date.strftime("%Y-%m-%d 00:00:00")))['weather']
+weather30mn_data.to_csv('weather30mn.csv')
+files.download('weather30mn.csv')
+
+nodes = node_data.dev_id.unique()
+for node in nodes:
+    single_data = node_data.loc[node_data.dev_id==node].resample('30T').mean()
+    single_data.to_csv( node +'.csv')
+    files.download( node +'.csv')
